@@ -11,14 +11,14 @@ abstract class majaxPheanstalkWorkerThread {
    *
    * @var integer
    */
-  protected $memory_limit = 100000000;
+  protected $memory_limit;
 
   /**
    * Sleep interval in milliseconds between recursions
    *
    * @var integer
    */
-  protected $sleep_ms = 100000;
+  protected $sleep_ms;
   
   /**
    * True if Pheanstalk is enabled
@@ -46,18 +46,21 @@ abstract class majaxPheanstalkWorkerThread {
    *
    * @param string $path 
    */
-  public function __construct($path, sfTask $task = null) {
+  public function __construct($path, sfTask $task = null)
+  {
     $this->setBasePath($path);
     $this->log('starting');
     $this->doConstruct();
+    
+    $this->memory_limit = sfConfig::get('app_pheanstalk_memory_limit',100000000);
+    $this->sleep_ms     = sfConfig::get('app_pheanstalk_sleep_ms', 100000);
     
     if($task instanceof sfTask)
     {
       $this->task = $task;
     }
     
-    if ($this->enable_pheanstalk)
-      $this->pheanstalk = majaxPheanstalk::getInstance();
+    if ($this->enable_pheanstalk) $this->pheanstalk = majaxPheanstalk::getInstance();
   }
 
   /**
@@ -122,7 +125,18 @@ abstract class majaxPheanstalkWorkerThread {
     $cnt = 0;
 
     while(1) {
-      $this->doRun();
+      
+      try
+      {
+        $this->doRun();
+      }
+      catch(Exception $e)
+      {
+        $message = sprintf("%s (on line %u in %s):\n%s", $e->getMessage(), $e->getLine(), $e->getFile(), $e->getTraceAsString());
+        $this->log($message,'fatal', $e);
+        throw $e;
+      }
+      
       $cnt++;
 
       $memory = memory_get_usage();
@@ -192,9 +206,25 @@ abstract class majaxPheanstalkWorkerThread {
    * @param string $txt Log message
    * @return void
    */
-  protected function log($txt) {
-    file_put_contents(sfConfig::get('sf_log_dir').'/daemon-'.get_class($this).'.txt', $txt . "\n", FILE_APPEND);
-    if($this->task instanceof sfTask) $this->task->logSection('worker',$txt);
+  protected function log($message, $status = 'info', $namespace = null) {
+    
+    $class = is_object($namespace) ? $namespace : $this;
+    
+    $log_string = sprintf('%s pheanstalk [%s] {%s} %s',
+      date('M d H:i:s'),
+      $status,
+      get_class($class),
+      $message
+    );
+    
+    $filename = sprintf('%s/%s_%s_%s.log', $this->path, sfConfig::get('sf_app'), sfConfig::get('sf_environment'), get_class($this));
+    
+    if($this->task instanceof sfTask && !$class instanceof Exception)
+    {
+      $this->task->logSection('worker',$message);
+    }
+    
+    file_put_contents($filename, $log_string . "\n", FILE_APPEND);
   }
 }
 
