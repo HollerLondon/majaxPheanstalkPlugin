@@ -8,18 +8,17 @@ class pheanstalkRunWorkerTask extends sfBaseTask
 {
   protected function configure()
   {
-    // add your own arguments here
-    $this->addArguments(array(
-      new sfCommandArgument('application', sfCommandArgument::REQUIRED, 'The application name'),
-      new sfCommandArgument('worker_class', sfCommandArgument::REQUIRED, 'Worker Class'),
-      new sfCommandArgument('log_path', sfCommandArgument::REQUIRED, 'Log Path'),
-    ));
-
     $this->addOptions(array(
       new sfCommandOption('application', null, sfCommandOption::PARAMETER_REQUIRED, 'The application name','frontend'),
       new sfCommandOption('env', null, sfCommandOption::PARAMETER_REQUIRED, 'The environment', 'dev'),
       new sfCommandOption('connection', null, sfCommandOption::PARAMETER_REQUIRED, 'The connection name', 'doctrine'),
       // add your own options here
+    ));
+
+    // add your own arguments here
+    $this->addArguments(array(
+      new sfCommandArgument('worker_class', sfCommandArgument::REQUIRED, 'Worker Class'),
+      new sfCommandArgument('log_path', sfCommandArgument::OPTIONAL, 'Log Path', sfConfig::get('sf_log_dir')),
     ));
 
     $this->namespace        = 'pheanstalk';
@@ -42,12 +41,18 @@ EOF;
     // Create a context from the config
     $context = sfContext::createInstance($this->configuration);
 
+    if(!class_exists($arguments['worker_class']))
+    {
+      throw new InvalidArgumentException("Argument 'worker_class' is null or not a valid Class");
+    }
+
     $worker_class = $arguments['worker_class'];
-    $log_path = $arguments['log_path'];
-    $thread = new $worker_class($log_path, $this);
+    $log_path     = $arguments['log_path'];
+    $thread       = new $worker_class($log_path, $this);
+
     if (!($thread instanceof majaxPheanstalkWorkerThread))
       throw new InvalidArgumentException('Class supplied was not a majaxPheanstalkWorkerThread child');
-
+    
     $thread->run();
   }
 }

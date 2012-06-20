@@ -1,6 +1,8 @@
 all:
   pheanstalk:
-    host:       127.0.0.1
-    port:       11300
+    host:           127.0.0.1
+    port:           11300
+    memory_limit:   100000000
+    sleep_ms:       100000
     # Set this if you've moved your pheanstalk library path
     # path:       %SF_LIB_DIR%/vendor/pheanstalk
