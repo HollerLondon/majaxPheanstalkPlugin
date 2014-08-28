@@ -5,14 +5,14 @@ class majaxPheanstalk {
   {
     $host = sfConfig::get('app_pheanstalk_host', '127.0.0.1');
     $port = sfConfig::get('app_pheanstalk_port', 11300);
-    
+
     $path = sfConfig::get('app_pheanstalk_path',realpath(dirname(__FILE__).'/../vendor')).'/pheanstalk_init.php';
 
     require_once $path;
 
     if (self::$conn == null)
     {
-      self::$conn = new Pheanstalk($host.':'.$port);
+      self::$conn = new Pheanstalk($host, $port);
     }
     return self::$conn;
   }
